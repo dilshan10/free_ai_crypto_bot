@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Crypto Trading Bot Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.min.js"></script>
+<style>
+body { font-family: Arial; background: #1e1e1e; color: #fff; }
+.container { max-width: 900px; margin: 20px auto; }
+button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+#logs { background: #000; padding: 10px; height: 400px; overflow-y: scroll; }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>Bybit Trading Bot Dashboard</h1>
+<button onclick="startBot()">Start Bot</button>
+<button onclick="stopBot()">Stop Bot</button>
+<div id="logs"></div>
+</div>
+<script>
+var socket = io();
+function startBot(){ socket.emit('start_bot'); }
+function stopBot(){ socket.emit('stop_bot'); }
+socket.on('trade_log', function(msg){
+    let logs = document.getElementById('logs');
+    logs.innerHTML += msg + "<br>";
+    logs.scrollTop = logs.scrollHeight;
+});
+</script>
+</body>
+</html>

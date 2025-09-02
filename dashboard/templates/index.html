@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <title>tradBot</title>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 min-h-screen">
+
+  <!-- Header -->
+  <header class="p-4 border-b border-gray-300 dark:border-gray-700 flex items-center justify-between">
+    <div class="flex items-center space-x-3">
+      <h1 class="text-2xl font-bold">tradBot</h1>
+      <span id="server-dot" class="h-3 w-3 rounded-full bg-red-500"></span>
+    </div>
+    <div class="flex items-center space-x-6 text-sm">
+      <span id="server-status">Server Offline</span>
+      <span id="last-update">Last update: --</span>
+      <span id="balance">Balance: 0.00 USDT</span>
+      <button id="theme-toggle" class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700">🌙</button>
+    </div>
+  </header>
+
+  <!-- Main content -->
+  <main class="p-6 grid grid-cols-12 gap-6">
+    
+    <!-- Candlestick Chart (2/3 width) -->
+    <section class="col-span-12 md:col-span-8 bg-white dark:bg-gray-800 rounded-xl shadow p-4">
+      <h2 class="text-lg font-semibold mb-2">Price Chart</h2>
+      <div id="chart" class="w-full h-[400px]"></div>
+    </section>
+
+    <!-- Signals List (1/3 width) -->
+    <aside class="col-span-12 md:col-span-4 bg-white dark:bg-gray-800 rounded-xl shadow p-4">
+      <h2 class="text-lg font-semibold mb-2">Trade Signals</h2>
+      <ul id="signal-list" class="space-y-2 text-sm max-h-[400px] overflow-y-auto"></ul>
+    </aside>
+
+    <!-- Logs Section -->
+    <section class="col-span-12 bg-white dark:bg-gray-800 rounded-xl shadow p-4">
+      <h2 class="text-lg font-semibold mb-2">Bot Logs</h2>
+      <div id="logs" class="text-xs font-mono max-h-[300px] overflow-y-auto"></div>
+    </section>
+
+  </main>
+
+  <!-- Scripts -->
+  <script>
+    const socket = io();
+    const serverDot = document.getElementById("server-dot");
+    const serverStatus = document.getElementById("server-status");
+    const lastUpdate = document.getElementById("last-update");
+    const balanceEl = document.getElementById("balance");
+    const logsEl = document.getElementById("logs");
+    const signalList = document.getElementById("signal-list");
+
+    // Theme toggle
+    const themeToggle = document.getElementById("theme-toggle");
+    themeToggle.addEventListener("click", () => {
+      const html = document.documentElement;
+      if (html.dataset.theme === "light") {
+        html.dataset.theme = "dark";
+        themeToggle.textContent = "☀️";
+      } else {
+        html.dataset.theme = "light";
+        themeToggle.textContent = "🌙";
+      }
+    });
+
+    // Update dashboard
+    socket.on("status", (data) => {
+      serverStatus.textContent = data.running ? "Server Online" : "Server Offline";
+      serverDot.className = "h-3 w-3 rounded-full " + (data.running ? "bg-green-500" : "bg-red-500");
+      lastUpdate.textContent = "Last update: " + (data.last_update || "--");
+      balanceEl.textContent = "Balance: " + (data.balance?.toFixed(2) || "0.00") + " USDT";
+
+      // Logs
+      logsEl.innerHTML = "";
+      (data.logs || []).slice().reverse().forEach(log => {
+        const div = document.createElement("div");
+        div.textContent = log;
+        logsEl.appendChild(div);
+      });
+
+      // Signals
+      signalList.innerHTML = "";
+      (data.signals || []).slice().reverse().forEach(sig => {
+        const li = document.createElement("li");
+        li.textContent = sig;
+        li.className = sig.includes("BUY") ? "text-green-500" : "text-red-500";
+        signalList.appendChild(li);
+      });
+
+      // Chart
+      if (data.candles && data.candles.length > 0) {
+        const candles = data.candles;
+        const trace = {
+          x: candles.map(c => new Date(c.time)),
+          close: candles.map(c => c.close),
+          open: candles.map(c => c.open),
+          high: candles.map(c => c.high),
+          low: candles.map(c => c.low),
+          type: "candlestick",
+          xaxis: "x",
+          yaxis: "y"
+        };
+        const layout = {
+          dragmode: "zoom",
+          margin: {r: 10, t: 25, b: 40, l: 60},
+          showlegend: false,
+          xaxis: {rangeslider: {visible: false}}
+        };
+        Plotly.newPlot("chart", [trace], layout);
+      }
+    });
+  </script>
+</body>
+</html>
